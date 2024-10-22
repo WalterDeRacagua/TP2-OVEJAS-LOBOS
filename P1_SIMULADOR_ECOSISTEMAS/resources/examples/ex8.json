@@ -1,0 +1,47 @@
+{
+  "width": 800,
+  "height": 600,
+  "cols": 50,
+  "rows": 40,
+  "animals": [
+    {
+      "amount": 200,
+      "spec": {
+        "type": "sheep",
+        "data": {}
+      }
+    },
+    {
+      "amount": 200,
+      "spec": {
+        "type": "wolf",
+        "data": {}
+      }
+    }
+
+  ],
+  "regions": [
+    {
+      "row": [ 0, 7 ],
+      "col": [ 0, 19 ],
+      "spec": {
+        "type": "dynamic",
+        "data": {
+          "food": 1.0,
+          "factor": 1
+        }
+      }
+    },
+    {
+      "row": [ 8, 14 ],
+      "col": [ 0, 19 ],
+      "spec": {
+        "type": "dynamic",
+        "data": {
+          "food": 1000.0,
+          "factor": 100
+        }
+      }
+    }
+  ]
+}

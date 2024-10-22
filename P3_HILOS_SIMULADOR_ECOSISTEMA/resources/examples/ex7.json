@@ -1,0 +1,193 @@
+{
+  "width": 800,
+  "height": 800,
+  "cols": 20,
+  "rows": 15,
+  "animals": [
+    {
+      "amount": 50,
+      "spec": {
+        "type": "sheep",
+        "data": {
+          "mate_strategy": {
+            "type": "youngest"
+          },
+          "danger_strategy": {
+            "type": "youngest"
+          },
+          "pos": {
+            "x_range": [ 100.0, 200.0 ],
+            "y_range": [ 100.0, 200.0 ]
+          }
+        }
+      }
+    },
+    {
+      "amount": 50,
+      "spec": {
+        "type": "sheep",
+        "data": {
+          "danger_strategy": {
+            "type": "select_first"
+          },
+          "mate_strategy": {
+            "type": "select_first"
+          },
+          "pos": {
+            "x_range": [ 600.0, 700.0 ],
+            "y_range": [ 100.0, 200.0 ]
+          }
+        }
+      }
+    },
+    {
+      "amount": 50,
+      "spec": {
+        "type": "sheep",
+        "data": {
+          "mate_strategy": {
+            "type": "closest"
+          },
+          "danger_strategy": {
+            "type": "closest"
+          },
+          "pos": {
+            "x_range": [ 600.0, 700.0 ],
+            "y_range": [ 100.0, 200.0 ]
+          }
+        }
+      }
+    },
+    {
+      "amount": 50,
+      "spec": {
+        "type": "sheep",
+        "data": {
+          "mate_strategy": {
+            "type": "oldest"
+          },
+          "danger_strategy": {
+            "type": "oldest"
+          },
+          "pos": {
+            "x_range": [ 600.0, 700.0 ],
+            "y_range": [ 100.0, 200.0 ]
+          }
+        }
+      }
+    },
+    {
+      "amount": 20,
+      "spec": {
+        "type": "sheep",
+        "data": {}
+      }
+    },
+    {
+      "amount": 10,
+      "spec": {
+        "type": "wolf",
+        "data": {}
+      }
+    },
+    {
+      "amount": 10,
+      "spec": {
+        "type": "wolf",
+        "data": {
+          "mate_strategy": {
+            "type": "youngest"
+          },
+          "hunt_strategy": {
+            "type": "closest"
+          }
+        }
+      }
+    },
+    {
+      "amount": 10,
+      "spec": {
+        "type": "wolf",
+        "data": {
+          "hunt_strategy": {
+            "type": "youngest"
+          },
+          "mate_strategy": {
+            "type": "youngest"
+          },
+          "pos": {
+            "x_range": [ 600.0, 700.0 ],
+            "y_range": [ 1000.0, 2000.0 ]
+          }
+        }
+      }
+    },
+    {
+      "amount": 10,
+      "spec": {
+        "type": "wolf",
+        "data": {
+          "hunt_strategy": {
+            "type": "closest"
+          },
+          "mate_strategy": {
+            "type": "closest"
+          }
+        }
+      }
+    },
+    {
+      "amount": 10,
+      "spec": {
+        "type": "wolf",
+        "data": {
+          "hunt_strategy": {
+            "type": "select_first"
+          },
+          "mate_strategy": {
+            "type": "select_first"
+          }
+        }
+      }
+    },
+    {
+      "amount": 10,
+      "spec": {
+        "type": "wolf",
+        "data": {
+          "hunt_strategy": {
+            "type": "youngest"
+          },
+          "mate_strategy": {
+            "type": "youngest"
+          }
+        }
+      }
+    }
+
+  ],
+  "regions": [
+    {
+      "row": [ 0, 7 ],
+      "col": [ 0, 19 ],
+      "spec": {
+        "type": "dynamic",
+        "data": {
+          "food": 1.0,
+          "factor": 1
+        }
+      }
+    },
+    {
+      "row": [ 1, 14 ],
+      "col": [ 0, 19 ],
+      "spec": {
+        "type": "dynamic",
+        "data": {
+          "food": 1000.0,
+          "factor": 100
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,387 @@
+package simulator.launcher;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.List;
+
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+
+import java.util.ArrayList;
+
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+
+import simulator.control.Controller;
+import simulator.factories.*;
+import simulator.misc.Utils;
+import simulator.model.*;
+import simulator.model.Region;
+import simulator.model.SelectionStrategy;
+import simulator.model.Simulator;
+import simulator.model.PasosCarnivoros;
+import simulator.view.MainWindow;
+
+public class Main {
+
+	private enum ExecMode {
+		BATCH("batch", "Batch mode"), GUI("gui", "Graphical User Interface mode");
+
+		private String _tag;
+		private String _desc;
+
+		private ExecMode(String modeTag, String modeDesc) {
+			_tag = modeTag;
+			_desc = modeDesc;
+		}
+
+		public String get_tag() {
+			return _tag;
+		}
+
+		public String get_desc() {
+			return _desc;
+		}
+
+		public Boolean isBATCHMode() {
+			return this.equals(BATCH);
+		}
+	}
+
+	// default values for some parameters
+	//
+	private final static Double _default_time = 10.0; // in seconds
+	private final static Double _default_delta_time = 0.03; // in seconds
+
+	// some attributes to stores values corresponding to command-line parameters
+	//
+	public static Double _delta_time = null;
+	private static Double _time = null;
+	private static String _in_file = null;
+	private static String _out_file = null;
+	private static Boolean _visor = false;
+	private static ExecMode _mode = ExecMode.GUI;
+	private static Controller _controller = null;
+	private static Simulator _sim = null;
+	private static JSONObject _jo_in = null;
+	private static OutputStream out = null;
+	private static boolean pasosCarnivoros = false;
+	private static boolean animalesNorte = false;
+
+	public static Factory<Animal> _animals;
+	public static Factory<Region> _regions_factory;
+	public static Factory<SelectionStrategy> _strategies;
+
+	private static void parse_args(String[] args) {
+
+		// define the valid command line options
+		//
+		Options cmdLineOptions = build_options();
+
+		// parse the command line as provided in args
+		//
+		CommandLineParser parser = new DefaultParser();
+		try {
+			CommandLine line = parser.parse(cmdLineOptions, args);
+			parse_delta_time_option(line);
+			parse_car_option(line);
+			parse_no_option(line);
+			parse_help_option(line, cmdLineOptions);
+			parse_mode_option(line);
+			parse_in_file_option(line);
+			parse_out_file_option(line);
+			parse_viewer_option(line);
+			parse_time_option(line);
+
+			// if there are some remaining arguments, then something wrong is
+			// provided in the command line!
+			//
+			String[] remaining = line.getArgs();
+			if (remaining.length > 0) {
+				String error = "Illegal arguments:";
+				for (String o : remaining)
+					error += (" " + o);
+				throw new ParseException(error);
+			}
+
+		} catch (ParseException e) {
+			System.err.println(e.getLocalizedMessage());
+			System.exit(1);
+		}
+
+	}
+
+	private static void parse_no_option(CommandLine line) {
+		if (line.hasOption("no")) {
+			animalesNorte = true;
+		}
+	}
+
+	private static Options build_options() {
+		Options cmdLineOptions = new Options();
+		// actual time
+		cmdLineOptions.addOption(Option.builder("dt").longOpt("delta-time").hasArg()
+				.desc("A double representig actual time, in seconds, per simulation step. Default value: 0.03.")
+				.build());
+		// car opt
+		cmdLineOptions.addOption(Option.builder("car")
+				.desc("Numero de pasos en los que su numero de carnivoros es superior a 3.").build());
+		// no opt
+		cmdLineOptions
+				.addOption(Option.builder("no").desc("Numero de animales movidos al norte en cada iteracion.").build());
+
+		// help
+		cmdLineOptions.addOption(Option.builder("h").longOpt("help").desc("Print this message.").build());
+
+		// mode
+		cmdLineOptions.addOption(Option.builder("m").longOpt("mode").hasArg()
+				.desc("Execution Mode. Possible values: " + ExecMode.BATCH.get_tag() + " (" + ExecMode.BATCH.get_desc()
+						+ "), " + ExecMode.GUI.get_tag() + " (" + ExecMode.GUI.get_desc() + ").")
+				.build());
+
+		// input file
+		cmdLineOptions.addOption(Option.builder("i").longOpt("input").hasArg()
+				.desc("A configuration file (optional in GUI mode).").build());
+
+		// output file
+		cmdLineOptions.addOption(Option.builder("o").longOpt("output").hasArg()
+				.desc("Output file, where output is written (only for BATCH mode).").build());
+
+		// simple viewer
+		cmdLineOptions.addOption(
+				Option.builder("sv").longOpt("simple-viewer").desc("Show the viewer window in BATCH mode.").build());
+
+		// steps
+		cmdLineOptions.addOption(Option.builder("t").longOpt("time").hasArg()
+				.desc("An real number representing the total simulation time in seconds. Default value: "
+						+ _default_time + " (only for BATCH mode).")
+				.build());
+
+		return cmdLineOptions;
+	}
+
+	private static void parse_mode_option(CommandLine line) {
+		if (line.hasOption("m")) {
+			String m = line.getOptionValue("m", _mode.get_tag());
+			if (!m.equalsIgnoreCase(ExecMode.GUI.get_tag()))
+				_mode = ExecMode.BATCH;
+		}
+	}
+
+	private static void parse_car_option(CommandLine line) {
+		if (line.hasOption("car")) {
+			pasosCarnivoros = true;
+		}
+	}
+
+	private static void parse_delta_time_option(CommandLine line) throws ParseException {
+		String t = line.getOptionValue("dt", _default_delta_time.toString());
+		try {
+			_delta_time = Double.parseDouble(t);
+			assert (_time >= 0);
+		} catch (Exception e) {
+			throw new ParseException("Invalid value for delta time: " + t);
+		}
+	}
+
+	private static void parse_help_option(CommandLine line, Options cmdLineOptions) {
+		if (line.hasOption("h")) {
+			HelpFormatter formatter = new HelpFormatter();
+			formatter.printHelp(Main.class.getCanonicalName(), cmdLineOptions, true);
+			System.exit(0);
+		}
+	}
+
+	private static void parse_in_file_option(CommandLine line) throws ParseException {
+		_in_file = line.getOptionValue("i");
+		if (_mode == ExecMode.BATCH && _in_file == null) {
+			throw new ParseException("In batch mode an input configuration file is required");
+		}
+	}
+
+	private static void parse_out_file_option(CommandLine line) {
+		if (line.hasOption("o")) {
+			_out_file = line.getOptionValue("o");
+		} else
+			//_out_file = null;
+			_out_file = "resources/tmp/default.json";
+			// TODO esto habria que hacer en el examen para que no de el error comentar la parte de arriba y meter un fichero auxiliar
+			//porque sino hace la linea 309 y al final de runController cerramos el System.out y ya no hay manera de restaurarlo
+		
+
+	}
+
+	private static void parse_viewer_option(CommandLine line) {
+		if (line.hasOption("sv")) {
+			_visor = true;
+		} else
+			_visor = false;
+	}
+
+	private static void parse_time_option(CommandLine line) throws ParseException {
+		String t = line.getOptionValue("t", _default_time.toString());
+		if (_mode.isBATCHMode()) {
+			try {
+				_time = Double.parseDouble(t);
+				assert (_time >= 0);
+			} catch (Exception e) {
+				throw new ParseException("Invalid value for time: " + t);
+			}
+
+		}
+	}
+
+	private static void init_factories() {
+		List<Builder<SelectionStrategy>> selection_strategy_builders = new ArrayList<>();
+		selection_strategy_builders.add(new SelectFirstBuilder());
+		selection_strategy_builders.add(new SelectClosestBuilder());
+		selection_strategy_builders.add(new SelectYoungestBuilder());
+		selection_strategy_builders.add(new SelectOldestBuilder());
+		_strategies = new BuilderBasedFactory<SelectionStrategy>(selection_strategy_builders);
+		List<Builder<Animal>> animal_builders = new ArrayList<>();
+		animal_builders.add(new SheepBuilder(_strategies));
+		animal_builders.add(new WolfBuilder(_strategies));
+		animal_builders.add(new LionBuilder(_strategies));
+		_animals = new BuilderBasedFactory<Animal>(animal_builders);
+
+		List<Builder<Region>> region_builders = new ArrayList<>();
+		region_builders.add(new DefaultRegionBuilder());
+		region_builders.add(new DynamicSupplyRegionBuilder());
+		_regions_factory = new BuilderBasedFactory<Region>(region_builders);
+
+	}
+
+	private static JSONObject load_JSON_file(InputStream in) {
+		return new JSONObject(new JSONTokener(in));
+	}
+
+	private static void start_batch_mode() throws Exception {
+		loadInputFile();
+		createOutputFile();
+		initSimulator();
+		createController();
+		PasosCarnivoros pc = null;
+		AnimalesMovidosAlNorte amv = null;
+		if (pasosCarnivoros) {
+			pc = new PasosCarnivoros(_controller);
+		}
+		if (animalesNorte) {
+			amv = new AnimalesMovidosAlNorte(_controller);
+
+		}
+		runController();
+		if (pasosCarnivoros) {
+			pc.mostrarPantalla();
+		}
+
+		if (animalesNorte) {
+
+			amv.mostrar_animales_por_iteracion();
+		}
+
+	}
+
+	private static void loadInputFile() throws FileNotFoundException {
+		InputStream is = new FileInputStream(new File(_in_file));
+		try {
+			_jo_in = load_JSON_file(is);
+		} catch (JSONException e) {
+			throw new IllegalArgumentException("The structure of the " + _in_file
+					+ " is not correct. Please, ensure that both keys and values are properly structured.");
+		}
+	}
+
+	private static void createOutputFile() throws Exception {
+		if (_out_file != null) {
+			out = new FileOutputStream(new File(_out_file));
+		} else
+			out = System.out;
+	}
+
+	private static void initSimulator() {
+		int cols, rows, width, height;
+		try {
+			cols = _jo_in.getInt("cols");
+			rows = _jo_in.getInt("rows");
+			width = _jo_in.getInt("width");
+			height = _jo_in.getInt("height");
+		} catch (Exception e) {
+			String k = e.getMessage().split(" ")[0].split("JSONObject")[1];
+			throw new IllegalArgumentException(
+					"The file " + _in_file + " contains an error in the key " + k + " when creating the board.");
+		}
+		_sim = new Simulator(cols, rows, width, height, _animals, _regions_factory);
+
+	}
+
+	private static void createController() {
+		_controller = new Controller(_sim);
+	}
+
+	private static void runController() throws IOException {
+		_controller.load_data(_jo_in);
+		_controller.run(_time, _delta_time, _visor, out);
+		if (out != null)
+			out.close();
+	}
+
+	private static void start_GUI_mode() throws Exception {
+		if (_in_file != null) {
+			loadInputFile();
+			initSimulator();
+		} else
+			_sim = new Simulator(800, 600, 15, 20, _animals, _regions_factory);
+		createController();
+		if (_in_file != null) {
+			_controller.load_data(_jo_in);
+		}
+		SwingUtilities.invokeAndWait(() -> new MainWindow(_controller));
+	}
+
+	private static void start(String[] args) throws Exception {
+		init_factories();
+		parse_args(args);
+		switch (_mode) {
+		case BATCH:
+			start_batch_mode();
+			break;
+		case GUI:
+			try {
+				UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			start_GUI_mode();
+			break;
+		}
+	}
+
+	public static void main(String[] args) {
+		Utils._rand.setSeed(2147483647l);
+		try {
+			start(args);
+		} catch (Exception e) {
+
+			System.err.println(e.getLocalizedMessage());
+			System.err.println();
+			System.err.println("Something went wrong ...");
+			System.out.println();
+			e.printStackTrace();
+
+		}
+	}
+}
