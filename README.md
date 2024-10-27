@@ -1,5 +1,5 @@
 # TP2-OVEJAS-LOBOS
-Práctica de TP2 de realizar un simulador de un ecosistema en el que conviven Ovejas y Lobos. Práctica realizada en parejas. 3 entregas:
+Práctica de TP2 de realizar un simulador de un ecosistema en el que conviven Ovejas y Lobos. Práctica realizada en parejas. 3 entregas:<br>
 -P1 <br>
 -P2 <br>
 -P3 <br>
